@@ -2,16 +2,17 @@ from beanie import init_beanie
 import motor.motor_asyncio
 
 from server.models.user import User
-from server.models.review import ProductReview
+from server.models.property import Property,ApplicableDiscount,PropertyImages
+from server.models.booking_history import Booking
+from server.models.statistic import Statistic
 
-from decouple import config
 
-
-DATABASE_URL = config("DATABASE_URL")
+from .settings import CONFIG_SETTINGS
 
 async def init_db():
-    client = motor.motor_asyncio.AsyncIOMotorClient(DATABASE_URL)
-    db_name = client['foodreviewapp']
+    client = motor.motor_asyncio.AsyncIOMotorClient(CONFIG_SETTINGS.DATABASE_URL)
+    db_name = client[CONFIG_SETTINGS.DATABASE_NAME]
 
-    await init_beanie(database=db_name, document_models=[User, ProductReview])
+    await init_beanie(database=db_name, document_models=[User,Property,ApplicableDiscount,
+                                                          PropertyImages,Booking,Statistic])
 
