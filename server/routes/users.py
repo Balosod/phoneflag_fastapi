@@ -3,9 +3,13 @@ from fastapi import APIRouter, HTTPException, Depends,Response
 from passlib.context import CryptContext
 from typing import List
 import re
+import base64
+import uuid
 from ..utils import auth_service
 from ..utils.helpers import fm
 from ..utils.helpers import EmailManager
+from ..utils.s3_storage import client
+from ..settings import CONFIG_SETTINGS
 from starlette.responses import JSONResponse
 
 # from auth.auth_handler import signJWT
@@ -16,6 +20,8 @@ from server.models.user import (
     User,
     UserLogin,
     OtpSchema,
+    ImageSchema,
+    ProfileDataSchema,
     EmailSchema,
     SuccessResponseModel,
     ErrorResponseModel
@@ -91,3 +97,101 @@ async def resend_otp(data:EmailSchema):
 
     obj = await auth_service.resend_OTP(data.email)
     return {"message":obj}
+
+
+
+@router.get("/profile",status_code = 200)
+async def get_user_profile_data(response:Response, Authorize: AuthJWT = Depends()):
+    
+    Authorize.jwt_required()
+    current_user = Authorize.get_jwt_subject()
+    
+    user = await User.find_one(User.email == current_user)
+    if user:
+        return user
+    else:
+        response.status_code = 400
+        return{"message":"User not found"}
+
+
+
+@router.post("/profile/image", status_code = 200, response_description="Upload profile image")
+async def upload_profile_image(data:ImageSchema, response:Response, Authorize: AuthJWT = Depends()):
+    
+    Authorize.jwt_required()
+    current_user = Authorize.get_jwt_subject()
+    
+    user = await User.find_one(User.email == current_user)
+    if user:
+        if CONFIG_SETTINGS.USE_SPACES:
+            img_name = str(uuid.uuid4())[:10] + '.png'
+            image_as_bytes = str.encode(data.image) 
+            img_recovered = base64.b64decode(image_as_bytes)
+            
+            client.put_object(
+            Bucket=CONFIG_SETTINGS.BUCKET,
+            Body=img_recovered,
+            Key=f"image/{img_name}",
+            ACL=CONFIG_SETTINGS.ACL,
+            ContentType="image/png"
+            )
+                
+            img_url = f"https://postatusapistorage.nyc3.digitaloceanspaces.com/image/{img_name}"
+            
+            user.img = img_url
+            await user.save()
+            
+            return{"message":"image successfully uploaded."}
+        else:
+            img_name = str(uuid.uuid4())[:10] + '.png'
+            image_as_bytes = str.encode(data.image) 
+            img_recovered = base64.b64decode(image_as_bytes)
+            
+            with open("server/media/image/uploaded_" + img_name, "wb") as f:
+                f.write(img_recovered)
+                
+            img_url = f"http://localhost:8000/media/image/uploaded_{img_name}"
+            
+            user.img = img_url
+            await user.save()
+            
+            return{"message":"image successfully uploaded"}
+    else:
+        response.status_code = 400
+        return{"message":"User not found"}
+    
+
+@router.post("/profile/data", status_code = 200, response_description="data updated")
+async def update_profile_data(data:ProfileDataSchema, response:Response, Authorize: AuthJWT = Depends()):
+    
+    Authorize.jwt_required()
+    current_user = Authorize.get_jwt_subject()
+    
+    user = await User.find_one(User.email == current_user)
+    if user:
+        if data.first_name:
+            user.first_name = data.first_name
+        if data.last_name:
+            user.last_name = data.last_name
+        if data.email:
+            email_regex = r'com$'
+            match = re.search(email_regex, data.email)
+            if not match:
+                response.status_code = 400
+                return HTTPException(
+                    status_code=400,
+                    detail="Email is invalid"
+                )
+            user.email = data.email
+        if data.phone:
+            user.phone = data.phone
+        if data.address:
+            user.address = data.address
+        if data.bio:
+            user.bio = data.bio
+        await user.save()
+        return {"message":"Data successfully updated"}
+    else:
+        response.status_code = 400
+        return{"message":"User not found"}
+    

@@ -53,34 +53,4 @@ async def read_root() -> dict:
 
 
 
-@app.get("/good", tags=["good"])
-async def get_good() -> dict:
-    
-    return {"message": "Welcome to EVC_Apartment"}
-
-
-
-
-
-
-    
-    
-
-# @huey.periodic_task(crontab(minute='*/1'))
-# async def every_three_minutes():
-#     booked_property = await Booking.find().to_list()
-#     for item in booked_property:
-#         if item.check_in_date == "monday1":
-#                 new_check_in = await Booking.get(item.id)
-#                 new_check_in.check_in_number = 1
-#                 await new_check_in.save()    
-#         if item.check_out_date == "friday1":
-#             new_check_out = await Booking.get(item.id)
-#             new_check_out.check_out_number = 1
-#             await new_check_out.save()
-#     # return ("good one")
-#     print('This task runs every 0.05 minutes')
-#     result = booking_helper.check_booking()
-#     print(result)
-
 

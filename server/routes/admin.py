@@ -6,7 +6,7 @@ from server.models.property import Property
 from server.models.booking_history import Booking
 from server.models.statistic import TotalStatistic
 from server.models.transaction import Transaction
-from server.models.user import User
+from server.models.user import User,EmailSchema
 from datetime import date
 
 
@@ -63,8 +63,8 @@ async def admin_landing_page() -> dict:
           
     return data
 
-@router.get("/landing/page/affiliate",status_code =200)
-async def admin_landing_page_affiliate() -> dict:
+@router.get("/landing/page/affiliate-sales",status_code =200)
+async def total_affiliate_sales() -> dict:
     
     #Authorize.jwt_required()
     
@@ -195,13 +195,13 @@ async def get_all_user() -> dict:
     return all_user
 
 
-@router.get("/add/affiliate/{email}",status_code =201)
-async def add_an_affiliate(email:str,response:Response) -> dict:
+@router.post("/add/affiliate",status_code =201)
+async def add_an_affiliate(data:EmailSchema,response:Response) -> dict:
     
     #Authorize.jwt_required()
     
     try:
-        user = await User.find_one(User.email == email)
+        user = await User.find_one(User.email == data.email)
         user.is_affiliate = True
         user.created = today.strftime("%B %d, %Y")
         await user.save()

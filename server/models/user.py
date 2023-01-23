@@ -13,10 +13,13 @@ class account_type(str,Enum):
     cooperate_account = "cooperate"
     
 class User(Document):
-    firstname: str
-    lastname: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    bio:Optional[str] = None
     email: EmailStr
-    phone:str
+    phone:Optional[str] = None
+    address:Optional[str] = None
+    img:Optional[str] = None
     password: str
     account:Optional[account_type] = None
     is_admin:bool = False
@@ -64,6 +67,20 @@ class OtpSchema(BaseModel):
     
 class EmailSchema(BaseModel):
     email: EmailStr = Field(...)
+    
+
+class ImageSchema(BaseModel):
+    image: str
+    
+class ProfileDataSchema(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone:Optional[str] = None
+    address:Optional[str] = None
+    bio:Optional[str] = None
+    
+    
     
 
 def SuccessResponseModel(data, code, message):

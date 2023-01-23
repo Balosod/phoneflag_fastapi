@@ -79,7 +79,7 @@ async def all_transaction( Authorize: AuthJWT = Depends()) -> dict:
 
 
 @router.get("/all/property",status_code =200)
-async def all_property(respone:Response, Authorize: AuthJWT = Depends()) -> dict:
+async def all_property(response:Response, Authorize: AuthJWT = Depends()) -> dict:
     
     Authorize.jwt_required()
     
