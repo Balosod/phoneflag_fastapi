@@ -9,8 +9,8 @@ from pydantic import BaseModel
 
 
 class Booking(Document):
-    check_in:str
-    check_out:str
+    check_in_date:str
+    check_out_date:str
     check_in_number:Optional[int] = 0
     check_out_number:Optional[int] = 0
     apply_discount:int
@@ -21,7 +21,7 @@ class Booking(Document):
         name = "bookings"
         
 class BookingSchema(BaseModel):
-    check_in:str
-    check_out:str
+    check_in_date:str
+    check_out_date:str
     apply_discount:int
     

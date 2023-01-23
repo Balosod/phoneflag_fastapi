@@ -4,7 +4,8 @@ from beanie import PydanticObjectId
 from beanie.operators import RegEx,And,Or,In
 from server.models.property import Property
 from server.models.booking_history import Booking
-from server.models.statistic import Statistic
+from server.models.statistic import TotalStatistic
+from server.models.transaction import Transaction
 from server.models.user import User
 from datetime import date
 
@@ -15,6 +16,8 @@ from datetime import date
 router = APIRouter()
 
 today = date.today()
+
+
 
 @router.get("/landing/page",status_code =200)
 async def admin_landing_page() -> dict:
@@ -37,23 +40,14 @@ async def admin_landing_page() -> dict:
                 cities_list[property_obj.nearest_area] = 1 
             total_sales += item.apply_discount
             check_in += item.check_in_number
-            if item.check_in == "monday1" and item.check_in_number == 0:
-                check_in +=1
-                new_check_in = await Booking.get(item.id)
-                new_check_in.check_in_number = 1
-                await new_check_in.save()
             check_out += item.check_out_number
-            if item.check_out == "friday1" and item.check_out_number == 0:
-                check_out +=1
-                new_check_out = await Booking.get(item.id)
-                new_check_out.check_out_number = 1
-                await new_check_out.save()
                 
-    statistic = await Statistic.find().to_list()
+    total_statistic = await TotalStatistic.find().to_list()
     
-    for item in statistic:
+    for item in total_statistic:
         property_obj = await Property.find_one(And((Property.id == item.property_id),(Property.property_type == "EVC_Apartment")))
         if property_obj:
+            print("yes1")
             statistic_list.append(item)
     
     sorted_cities = sorted(cities_list.items(), key=lambda x:x[1],reverse=True)[0:3]
@@ -62,11 +56,69 @@ async def admin_landing_page() -> dict:
     
     data.append(top_cites)    
     data.append({"total_sales":total_sales}) 
+    data.append({"total_visitors":0}) 
     data.append({"check_in":check_in}) 
     data.append({"check_out":check_out}) 
-    data.extend(statistic_list)    
+    data.append(statistic_list)    
           
     return data
+
+@router.get("/landing/page/affiliate",status_code =200)
+async def admin_landing_page_affiliate() -> dict:
+    
+    #Authorize.jwt_required()
+    
+    data = []
+    total_sales = 0
+    check_in = 0
+    check_out = 0
+    statistic_list = []
+    cities_list = {}
+    booked_property = await Booking.find().to_list()
+    for item in booked_property:
+        property_obj = await Property.find_one(And((Property.id == item.property_id),(Property.property_type == "EVCA_Affiliate")))
+        if property_obj:
+            try:
+                cities_list[property_obj.nearest_area] += 1 
+            except:
+                cities_list[property_obj.nearest_area] = 1 
+            total_sales += item.apply_discount
+            check_in += item.check_in_number
+            check_out += item.check_out_number
+                
+    total_statistic = await TotalStatistic.find().to_list()
+    
+    for item in total_statistic:
+        property_obj = await Property.find_one(And((Property.id == item.property_id),(Property.property_type == "EVCA_Affiliate")))
+        if property_obj:
+            print("yes")
+            statistic_list.append(item)
+    
+    sorted_cities = sorted(cities_list.items(), key=lambda x:x[1],reverse=True)[0:3]
+    top_cites = dict(sorted_cities)
+    
+    
+    data.append(top_cites)    
+    data.append({"total_sales":total_sales}) 
+    data.append({"total_visitors":0}) 
+    data.append({"check_in":check_in}) 
+    data.append({"check_out":check_out}) 
+    data.append(statistic_list)    
+          
+    return data
+
+
+
+@router.get("/transaction",status_code =200)
+async def all_transaction() -> dict:
+    
+    #Authorize.jwt_required()
+    
+    all_transaction = await Transaction.find(Transaction.agent == "EVC_Apartment").to_list()
+
+    return all_transaction
+
+
 
 @router.get("/all/approved/property",status_code =200)
 async def all_approved_property() -> dict:

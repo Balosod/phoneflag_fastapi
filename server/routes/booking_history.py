@@ -1,11 +1,15 @@
 from fastapi import APIRouter, Depends, Response, status
 from fastapi_jwt_auth import AuthJWT
 from beanie import PydanticObjectId
+from beanie.operators import RegEx,And,Or,In
 from server.models.booking_history import Booking,BookingSchema
-from server.models.statistic import Statistic
+from server.models.statistic import TotalStatistic
+from server.models.statistic import EachStatistic
+from server.models.transaction import Transaction
 from server.models.user import User
 from server.models.property import Property
 from datetime import date
+
 
 
 
@@ -14,10 +18,11 @@ router = APIRouter()
 today = date.today()
 
 
+
 async def get_ID(itemID):
     propertyID = await Property.get(itemID, fetch_links=True)
     if propertyID:
-        return propertyID.id
+        return {"id":propertyID.id,"name": propertyID.name,"agent":propertyID.property_type,"owner":propertyID.owner_id}
     else:
         return None
     
@@ -29,29 +34,57 @@ async def book_a_property(data:BookingSchema,itemID:PydanticObjectId,response:Re
     
     user = await User.find_one(User.email == current_user)
     Id = await get_ID(itemID)
+    print(Id)
 
     if Id:
         booking = Booking(
-            check_in=data.check_in,
-            check_out=data.check_out,
+            check_in_date=data.check_in_date,
+            check_out_date=data.check_out_date,
             apply_discount=data.apply_discount,
             owner_id=user.id,
-            property_id=Id
+            property_id=Id["id"]
             )
         
         await booking.create()
         
-        statistic_data = await Statistic.find_one(Statistic.date == today.strftime("%b-%d-%Y") )
-        if statistic_data:
-            updated_statistic_data = await Statistic.get(statistic_data.id)
+        transaction = Transaction(
+            check_in_date=data.check_in_date,
+            name=Id["name"],
+            transaction_id="1234567890",
+            price=data.apply_discount,
+            agent=Id["agent"],
+            status="Booked",
+            check_out_date=data.check_out_date,
+            owner_id=Id["owner"],
+            property_id=Id["id"]
+        )
+        await transaction.create()
+        
+        total_statistic_data = await TotalStatistic.find_one(And((TotalStatistic.date == today.strftime("%b-%d-%Y")),(TotalStatistic.agent == Id["agent"]) ))
+        if total_statistic_data:
+            updated_statistic_data = await TotalStatistic.get(total_statistic_data.id)
             updated_statistic_data.reach += data.apply_discount
             await updated_statistic_data.save()
         else:
-            new_statistic_data = Statistic(date = today.strftime("%b-%d-%Y"),
+            new_statistic_data = TotalStatistic(date = today.strftime("%b-%d-%Y"),
                                            reach= data.apply_discount,
-                                           property_id=Id
+                                           agent=Id["agent"],
+                                           property_id=Id["id"]
                                            )
             await new_statistic_data.create()
+            
+        if Id["agent"] == "EVCA_Affiliate":
+            each_statistic_data = await EachStatistic.find_one(And((EachStatistic.date == today.strftime("%b-%d-%Y")),(EachStatistic.owner_id == Id["owner"]) ))
+            if each_statistic_data:
+                updated_statistic_data = await EachStatistic.get(each_statistic_data.id)
+                updated_statistic_data.reach += data.apply_discount
+                await updated_statistic_data.save()
+            else:
+                each_statistic_data = EachStatistic(date = today.strftime("%b-%d-%Y"),
+                                            reach= data.apply_discount,
+                                            owner_id=Id["owner"],
+                                            )
+                await each_statistic_data.create()
             
         return {"message":"Booking successfully added"}
     else:

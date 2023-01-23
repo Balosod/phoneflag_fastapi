@@ -1,16 +1,32 @@
 from typing import Optional,List
 from beanie import Document, Link, PydanticObjectId
 from pydantic import BaseModel
+from enum import Enum
 
 
 
     
-    
-class Statistic(Document):
+
+class ProperyType(str,Enum):
+    EVC_Apartment = "EVC_Apartment"
+    EVCA_Affiliate = "EVCA_Affiliate"
+      
+class TotalStatistic(Document):
     date:str
     reach:int
+    agent:ProperyType = ProperyType.EVCA_Affiliate
     property_id: PydanticObjectId
     
     
     class Settings():
-        name = "statistics"
+        name = "total_statistics"
+        
+     
+class EachStatistic(Document):
+    date:str
+    reach:int
+    owner_id: PydanticObjectId
+    
+    
+    class Settings():
+        name = "each_statistics"

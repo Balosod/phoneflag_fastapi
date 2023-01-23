@@ -25,7 +25,7 @@ class ProperyStatus(str,Enum):
 class PropertyCategory(str,Enum):
     Apartment = "Apartment"
     Room = "Room"
-    Short_Stay = "Short Stay"
+    Short_Stay = "Short_Stay"
     Experience = "Experience"
     Bed_And_Breakfast = "Bed_&_Breakfast"
     
@@ -42,6 +42,13 @@ class PropertyImages(Document):
     
     class Settings:
         name = "property_image"
+        
+        
+class PropertyVideos(Document):
+    img:str
+    
+    class Settings:
+        name = "property_video"
     
        
 class Property(Document):
@@ -58,7 +65,8 @@ class Property(Document):
     status:Optional[ProperyStatus] = ProperyStatus.Reject
     order:Optional[int] = 0
     owner_id: PydanticObjectId
-    image: List[Link[PropertyImages]]
+    image: Optional[List[Link[PropertyImages]]] = None
+    video: Optional[List[Link[PropertyVideos]]] = None
     
     class Settings:
         name = "properties"
@@ -74,5 +82,6 @@ class PropertySchema(BaseModel):
     discount: List[ApplicableDiscount]
     food_option:list
     services:list
-    images:list
+    images:Optional[list] = None
+    videos:Optional[list] = None
         

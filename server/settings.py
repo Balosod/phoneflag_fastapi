@@ -38,8 +38,8 @@ class Settings(BaseModel):
     BUCKET=config("BUCKET")
     ACL=config("ACL")
     
-    
-    
+
+
 conf = ConnectionConfig(
     MAIL_USERNAME = config("MAIL_USERNAME"),
     MAIL_PASSWORD = config("MAIL_PASSWORD"),
@@ -52,3 +52,7 @@ conf = ConnectionConfig(
 )
  
 CONFIG_SETTINGS = Settings()
+
+
+
+

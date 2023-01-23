@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends,status,Response
 from fastapi_jwt_auth import AuthJWT
 from beanie.operators import RegEx,And,Or,In
-from ..utils import upload_image_helper
+from ..utils import upload_image_helper, upload_video_helper
 from ..settings import CONFIG_SETTINGS
 from server.models.user import User
-from server.models.property import Property,ApplicableDiscount,PropertySchema,PropertyImages
+from server.models.property import Property,ApplicableDiscount,PropertySchema,PropertyImages,PropertyVideos
 
 
 
@@ -26,8 +26,10 @@ async def create_property(data:PropertySchema,response:Response,Authorize: AuthJ
     try:
         if CONFIG_SETTINGS.USE_SPACES:
             image_obj = await upload_image_helper.upload_image_to_S3_bucket(data.images,PropertyImages)
+            video_obj = await upload_video_helper.upload_video_to_S3_bucket(data.videos,PropertyVideos)
         else:
             image_obj = await upload_image_helper.upload_image_to_file_path(data.images,PropertyImages)
+            video_obj = await upload_video_helper.upload_video_to_file_path(data.videos,PropertyVideos)
         
         price_list = []
         
@@ -53,6 +55,7 @@ async def create_property(data:PropertySchema,response:Response,Authorize: AuthJ
             services = data.services,
             owner_id=user.id,
             image=image_obj,
+            video=video_obj,
         )
             
         await house_property.create()
