@@ -169,11 +169,11 @@ async def update_profile_data(data:ProfileDataSchema, response:Response, Authori
     
     user = await User.find_one(User.email == current_user)
     if user:
-        if data.first_name:
+        if (data.first_name and data.first_name != ""):
             user.first_name = data.first_name
-        if data.last_name:
+        if (data.last_name and data.last_name != ""):
             user.last_name = data.last_name
-        if data.email:
+        if (data.email and data.email != ""):
             email_regex = r'com$'
             match = re.search(email_regex, data.email)
             if not match:
@@ -183,11 +183,11 @@ async def update_profile_data(data:ProfileDataSchema, response:Response, Authori
                     detail="Email is invalid"
                 )
             user.email = data.email
-        if data.phone:
+        if (data.phone and data.phone != ""):
             user.phone = data.phone
-        if data.address:
+        if (data.address and data.address != ""):
             user.address = data.address
-        if data.bio:
+        if (data.bio and data.bio != ""):
             user.bio = data.bio
         await user.save()
         return {"message":"Data successfully updated"}

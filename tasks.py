@@ -5,6 +5,10 @@ from huey import SqliteHuey
 from huey import crontab
 from server.settings import CONFIG_SETTINGS
 from server.models.booking_history import Booking
+from datetime import date
+
+
+today = date.today()
 
 
 huey = SqliteHuey(filename='/tmp/demo.db')
@@ -19,13 +23,14 @@ async def init_db():
 
 async def async_function():
     await init_db()
+    date = today.strftime("%d/%m/%Y")
     booked_property = await Booking.find().to_list()
     for item in booked_property:
-        if item.check_in_date == "monday1":
+        if item.check_in_date == date:
             new_check_in = await Booking.get(item.id)
             new_check_in.check_in_number = 1
             await new_check_in.save()  
-        if item.check_out_date == "friday1":
+        if item.check_out_date == date:
             new_check_out = await Booking.get(item.id)
             new_check_out.check_out_number = 1
             await new_check_out.save()

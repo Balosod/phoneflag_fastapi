@@ -5,11 +5,11 @@ from enum import Enum
 
 
 
-    
-
 class ProperyType(str,Enum):
     EVC_Apartment = "EVC_Apartment"
     EVCA_Affiliate = "EVCA_Affiliate"
+    
+
       
 class TotalStatistic(Document):
     date:str
