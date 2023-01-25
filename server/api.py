@@ -10,6 +10,7 @@ from server.routes.affiliate import router as AffiliateRouter
 from fastapi_jwt_auth import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException
 from .settings import CONFIG_SETTINGS
+from fastapi.middleware.cors import CORSMiddleware
 
 
 
@@ -17,7 +18,14 @@ from .settings import CONFIG_SETTINGS
 
 app = FastAPI()
 
-    
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @AuthJWT.load_config
 def get_config():
