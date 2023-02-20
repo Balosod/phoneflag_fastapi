@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from . helpers import EmailManager, OTPManager,fm
+from . helpers import EmailManager, OTPManager
 from ..models.user import User
 
 
@@ -20,6 +20,13 @@ async def resend_OTP(email: str):
     print(user)
     if not user:
         raise HTTPException(status_code=400, detail="This email is invalid.")
-    message = EmailManager.send_otp_msg(user.email)
-    await fm.send_message(message)
-    return "success"
+    try:
+        send_smtp_email  = EmailManager.send_otp_msg(user.email)
+        api_response = api_instance.send_transac_email(send_smtp_email)
+        return "success"
+    
+    except:
+        return HTTPException(
+            status_code=400,
+            detail="Mail not send"
+        )

@@ -3,28 +3,28 @@ from datetime import datetime
 from typing import Optional
 from beanie import Document
 from pydantic import BaseModel, EmailStr, Field,validator
-from datetime import date
 from enum import Enum
 
-today = date.today()
 
-class account_type(str,Enum):
-    personal_account = "personal"
-    cooperate_account = "cooperate"
+
+class Gender(str,Enum):
+    male = "male"
+    female = "female"
+    other = "other"
     
 class User(Document):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    bio:Optional[str] = None
-    email: EmailStr
-    phone:Optional[str] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
     address:Optional[str] = None
-    img:Optional[str] = None
+    date_of_birth:Optional[str] = None
+    phone:Optional[str] = None
+    email: EmailStr
+    sales:Optional[int] = 0
+    boughts:Optional[int] = 0
+    gender:Optional[Gender] = None
+    store_name:Optional[str] = None
+    img:Optional[str]
     password: str
-    account:Optional[account_type] = None
-    is_admin:bool = False
-    is_affiliate:bool = False
-    created:str = today.strftime("%B %d, %Y")
     active: bool = False
     
     @validator('password', always=True)
@@ -47,7 +47,12 @@ class User(Document):
 
     
 
-
+class RegistrationSchema(BaseModel):
+    username: Optional[str] = None
+    email: EmailStr
+    password: str
+   
+    
 class UserLogin(BaseModel):
     email: EmailStr = Field(...)
     password: str = Field(...)
@@ -73,12 +78,17 @@ class ImageSchema(BaseModel):
     image: str
     
 class ProfileDataSchema(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
     email: Optional[EmailStr] = None
+    store_name: Optional[str] = None
     phone:Optional[str] = None
     address:Optional[str] = None
-    bio:Optional[str] = None
+    
+   
+class PasswordSchema(BaseModel):
+    current_password: str
+    new_password:str
     
     
     

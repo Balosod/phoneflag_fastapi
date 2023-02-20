@@ -21,6 +21,9 @@ class Settings(BaseModel):
     OTP_SECRET_KEY=config("OTP_SECRET_KEY")
     OTP_EXPIRES=config("OTP_EXPIRES")
     
+     #MAIL
+    SEND_IN_BLUE_API_KEY=config("SEND_IN_BLUE_API_KEY")
+    
     #Social Auth Setting
         #google
     SOCIAL_AUTH_GOOGLE_OAUTH2_KEY=config("SOCIAL_AUTH_GOOGLE_OAUTH2_KEY")
@@ -30,7 +33,7 @@ class Settings(BaseModel):
     SOCIAL_AUTH_FACEBOOK_SECRET=config("SOCIAL_AUTH_FACEBOOK_SECRET")
     
     #S3 Bucket setting
-    USE_SPACES=True
+    USE_SPACES=False
     REGION_NAME=config("REGION_NAME")
     ENDPOINT_URL=config("ENDPOINT_URL")
     AWS_ACCESS_KEY_ID=config("AWS_ACCESS_KEY_ID")
@@ -40,16 +43,7 @@ class Settings(BaseModel):
     
 
 
-conf = ConnectionConfig(
-    MAIL_USERNAME = config("MAIL_USERNAME"),
-    MAIL_PASSWORD = config("MAIL_PASSWORD"),
-    MAIL_FROM = config("MAIL_FROM"),
-    MAIL_PORT = 465,
-    MAIL_SERVER = config("MAIL_SERVER"),
-    MAIL_STARTTLS=False,
-    MAIL_SSL_TLS=True,
-    USE_CREDENTIALS = True,
-)
+
  
 CONFIG_SETTINGS = Settings()
 

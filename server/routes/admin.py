@@ -1,212 +1,185 @@
 from fastapi import APIRouter, Depends,status,Response
 from fastapi_jwt_auth import AuthJWT
-from beanie import PydanticObjectId
 from beanie.operators import RegEx,And,Or,In
-from server.models.property import Property
-from server.models.booking_history import Booking
+from server.models.user import User
+from server.models.device import Device
+from server.models.order import Order
 from server.models.statistic import TotalStatistic
-from server.models.transaction import Transaction
-from server.models.user import User,EmailSchema
+from server.models.notification import Notification
+from server.models.tracking import Tracking
+from server.models.insurance import Insurance, InsuredUser,InsuranceCompany
+from server.models.ads import Ads, AdsNotification
 from datetime import date
-
-
 
 
 
 router = APIRouter()
 
-today = date.today()
 
 
 
-@router.get("/landing/page",status_code =200)
-async def admin_landing_page() -> dict:
+@router.get("/dashboard",status_code =200)
+async def dashboard() -> dict:
+    context = {}
     
-    #Authorize.jwt_required()
+    users_id = []
+    sellers = []
+    buyers = []
+    buyers_id = []
+    orders = await Order.find().to_list()
+    users = await User.find().to_list()
+    for order in orders:
+        users_id.append(order.device_id)
+        buyers_id.append(order.owner_id)
+        
+    for Id in list(set(users_id)):
+        device = await Device.get(Id)
+        user = await User.get(device.owner_id)
+        sellers.append(user.dict())
     
-    data = []
+    for Id in list(set(buyers_id)):
+        user = await User.get(Id)
+        buyers.append(user.dict())
+    
+    monthly_sales = await TotalStatistic.find().to_list()
+    total_devices_tracked = await Tracking.find(Tracking.status == "tracking").to_list()
+    total_devices_insured = await Insurance.find(Insurance.status == "payment_done").to_list()
+    top_sellers = sorted(sellers, key=lambda x:x['sales'],reverse=True)
+    top_buyers = sorted(buyers, key=lambda x:x['boughts'],reverse=True)
+    
+    context["total_order"] = len(orders)
+    context["total_registered_user"] = len(users)
+    context["total_devices_insured"] = len(total_devices_insured)
+    context["total_devices_tracked"] = len(total_devices_tracked)
+    context["monthly_sales"] = monthly_sales
+    context["top_buyers"] = top_buyers
+    context["top_sellers"] = top_sellers
+    
+    
+    return context
+
+
+@router.get("/marketplace",status_code =200)
+async def marketplace() -> dict:
+    
+    today = date.today()
+    
+    context = {}
+    
+    top_devices =[]
     total_sales = 0
-    check_in = 0
-    check_out = 0
-    statistic_list = []
-    cities_list = {}
-    booked_property = await Booking.find().to_list()
-    for item in booked_property:
-        property_obj = await Property.find_one(And((Property.id == item.property_id),(Property.property_type == "EVC_Apartment")))
-        if property_obj:
-            try:
-                cities_list[property_obj.nearest_area] += 1 
-            except:
-                cities_list[property_obj.nearest_area] = 1 
-            total_sales += item.apply_discount
-            check_in += item.check_in_number
-            check_out += item.check_out_number
-                
-    total_statistic = await TotalStatistic.find().to_list()
+    sales_this_month = 0
+    profitable_categories = {}
     
-    for item in total_statistic:
-        property_obj = await Property.find_one(And((Property.id == item.property_id),(Property.property_type == "EVC_Apartment")))
-        if property_obj:
-            print("yes1")
-            statistic_list.append(item)
+    devices = await Device.find().to_list()
+    for device in devices:
+        top_devices.append(device.dict())
+    best_selling_product = sorted(top_devices, key=lambda x:x['times_bought'],reverse=True)[0:1]
+    top_selling_product = sorted(top_devices, key=lambda x:x['times_bought'],reverse=True)[0:5]
     
-    sorted_cities = sorted(cities_list.items(), key=lambda x:x[1],reverse=True)[0:3]
-    top_cites = dict(sorted_cities)
+    sales = await TotalStatistic.find().to_list()
+    for sale in sales:
+        total_sales += sale.reach
+        
+    orders  = await Order.find().to_list()
     
+    todays_date = today.strftime("%b-%d-%Y")
+    splited_date = todays_date.split("-")
+    month = splited_date[0]
+    year = splited_date[2]
     
-    data.append(top_cites)    
-    data.append({"total_sales":total_sales}) 
-    data.append({"total_visitors":0}) 
-    data.append({"check_in":check_in}) 
-    data.append({"check_out":check_out}) 
-    data.append(statistic_list)    
-          
-    return data
-
-@router.get("/landing/page/affiliate-sales",status_code =200)
-async def total_affiliate_sales() -> dict:
+    date_pattern = rf'\b{month}\S+{year}\b'
+    monthly_sales = await TotalStatistic.find(RegEx(TotalStatistic.todays_date,date_pattern,"i" )).to_list()
     
-    #Authorize.jwt_required()
-    
-    data = []
-    total_sales = 0
-    check_in = 0
-    check_out = 0
-    statistic_list = []
-    cities_list = {}
-    booked_property = await Booking.find().to_list()
-    for item in booked_property:
-        property_obj = await Property.find_one(And((Property.id == item.property_id),(Property.property_type == "EVCA_Affiliate")))
-        if property_obj:
-            try:
-                cities_list[property_obj.nearest_area] += 1 
-            except:
-                cities_list[property_obj.nearest_area] = 1 
-            total_sales += item.apply_discount
-            check_in += item.check_in_number
-            check_out += item.check_out_number
-                
-    total_statistic = await TotalStatistic.find().to_list()
-    
-    for item in total_statistic:
-        property_obj = await Property.find_one(And((Property.id == item.property_id),(Property.property_type == "EVCA_Affiliate")))
-        if property_obj:
-            print("yes")
-            statistic_list.append(item)
-    
-    sorted_cities = sorted(cities_list.items(), key=lambda x:x[1],reverse=True)[0:3]
-    top_cites = dict(sorted_cities)
+    for sales in monthly_sales:
+        sales_this_month += sales.reach
+  
     
     
-    data.append(top_cites)    
-    data.append({"total_sales":total_sales}) 
-    data.append({"total_visitors":0}) 
-    data.append({"check_in":check_in}) 
-    data.append({"check_out":check_out}) 
-    data.append(statistic_list)    
-          
-    return data
+    bought_devices = await Device.find(Device.times_bought > 0).to_list()
+    for bought_device in bought_devices:
+        try:
+            profitable_categories[bought_device.category.value] += bought_device.discount_price
+        except:
+            profitable_categories[bought_device.category.value] = bought_device.discount_price
+    
+    categories_sorted_by_price = sorted(profitable_categories.items(), key=lambda x:x[1],reverse=True)
+     
+    notification = await Notification.find().to_list()
+        
+    context["best_selling_product"] = best_selling_product
+    context["top_selling_product"] = top_selling_product
+    context["total_sales"] = total_sales
+    context["total_orders"] = len(orders)
+    context["items_on_sales"] = len(devices)
+    context["sales_this_month"] = sales_this_month
+    context["profitable_categories"] = dict(categories_sorted_by_price)
+    context["notification"] = notification
+    
+    return context
 
 
 
-@router.get("/transaction",status_code =200)
-async def all_transaction() -> dict:
+
+@router.get("/insurance",status_code =200)
+async def insurance() -> dict:
     
-    #Authorize.jwt_required()
+    context = {}
     
-    all_transaction = await Transaction.find(Transaction.agent == "EVC_Apartment").to_list()
-
-    return all_transaction
-
-
-
-@router.get("/all/approved/property",status_code =200)
-async def all_approved_property() -> dict:
+    insurance_companies = len(list(InsuranceCompany))
+    total_insured_user  = await InsuredUser.find().to_list()
+    total_register_device = await Insurance.find(fetch_links=True).to_list()
+    total_insured_devices = await Insurance.find(Insurance.status == "payment_done", fetch_links=True).to_list()
     
-    #Authorize.jwt_required()
-    
-    all_property = await Property.find(Property.status == "Approve", fetch_links=True).to_list()
-
-    return all_property
+    context["total_insured_user"] =len(total_insured_user)
+    context["total_insured_devices"] = len(total_insured_devices)
+    context["insurance_companies"] = insurance_companies
+    context["total_register_device"] = len(total_register_device)
+    context["data"] = total_register_device
+    return context
 
 
-@router.get("/all/property",status_code =200)
-async def all_property() -> dict:
-    
-    #Authorize.jwt_required()
-    
-    all_property = await Property.find(fetch_links=True).to_list()
-
-    return all_property
 
 
-@router.get("/approve/property/{ID}",status_code =201)
-async def approve_a_property(ID:PydanticObjectId,response:Response) -> dict:
+@router.get("/tracking",status_code =200)
+async def tracking() -> dict:
     
-    #Authorize.jwt_required()
+    context = {}
+  
     
-    try:
-        property_obj = await Property.find_one(Property.id == ID,fetch_links=True)
-        property_obj.status = "Approve"
-        await property_obj.save()
-
-        return {"message":"Property has been Approved"}
-    except:
-        response.status_code = 400
-        return {"message":"Something Went Wrong"}
+    total_register_device = await Tracking.find().to_list()
+    total_tracked_devices = await Tracking.find(Tracking.status == "tracking").to_list()
     
+    context["total_tracked_devices"] = len(total_tracked_devices)
+    context["total_register_device"] = len(total_register_device)
+    context["data"] = total_register_device
     
-@router.get("/reject/property/{ID}",status_code =201)
-async def reject_a_property(ID:PydanticObjectId,response:Response) -> dict:
-    
-    #Authorize.jwt_required()
-    
-    try:
-        property_obj = await Property.find_one(Property.id == ID,fetch_links=True)
-        property_obj.status = "Reject"
-        await property_obj.save()
-
-        return {"message":"Property has been Rejected"}
-    except:
-        response.status_code = 400
-        return {"message":"Something Went Wrong"}
-    
-    
-@router.get("/all/affiliate",status_code =200)
-async def get_all_affiliate() -> dict:
-    
-    #Authorize.jwt_required()
-    all_affiliate = []
-    affiliate_obj = await User.find(And((User.is_affiliate == True),(User.active == True)), fetch_links=True).to_list()
-    
-    all_affiliate.append({"total_affiliate":len(affiliate_obj)})
-    all_affiliate.extend(affiliate_obj)
-    return all_affiliate
-
-@router.get("/all/user",status_code =200)
-async def get_all_user() -> dict:
-    
-    #Authorize.jwt_required()
-    all_user = []
-    user_obj = await User.find(And((User.is_affiliate == False),(User.active == True)), fetch_links=True).to_list()
-    
-    all_user.append({"total_user":len(user_obj)})
-    all_user.extend(user_obj)
-    return all_user
+    return context
 
 
-@router.post("/add/affiliate",status_code =201)
-async def add_an_affiliate(data:EmailSchema,response:Response) -> dict:
+@router.get("/ads",status_code =200)
+async def ads() -> dict:
     
-    #Authorize.jwt_required()
+    context = {}
+  
+    users = await User.find().to_list()
+    ads =  await Ads.find().to_list()
+    recent_campaign = await AdsNotification.find().to_list()
     
-    try:
-        user = await User.find_one(User.email == data.email)
-        user.is_affiliate = True
-        user.created = today.strftime("%B %d, %Y")
-        await user.save()
+    context["total_campaign"] = len(ads)
+    context["total_audience"] = len(users)
+    context["recent_campaign"] = recent_campaign
+    
+    
+    return context
 
-        return {"message":"User Successfully added as an affiliate"}
-    except:
-        response.status_code = 400
-        return {"message":"Something Went Wrong"}
+
+
+
+@router.get("/account",status_code =200)
+async def account() -> dict:
+    
+    users = await User.find().to_list()
+    
+    return users
+    

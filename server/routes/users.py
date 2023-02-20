@@ -6,19 +6,21 @@ import re
 import base64
 import uuid
 from ..utils import auth_service
-from ..utils.helpers import fm
+from ..utils.helpers import api_instance
 from ..utils.helpers import EmailManager
 from ..utils.s3_storage import client
 from ..settings import CONFIG_SETTINGS
 from starlette.responses import JSONResponse
 
-# from auth.auth_handler import signJWT
+
 from fastapi_jwt_auth import AuthJWT
 
 
 from server.models.user import (
     User,
+    RegistrationSchema,
     UserLogin,
+    PasswordSchema,
     OtpSchema,
     ImageSchema,
     ProfileDataSchema,
@@ -34,10 +36,10 @@ router = APIRouter()
 
 
 @router.post("/signup", response_description="User added to the database",status_code=201)
-async def create_account(user: User,response:Response) -> dict:
+async def create_account(data: RegistrationSchema,response:Response) -> dict:
     
     email_regex = r'com$'
-    match = re.search(email_regex, user.email)
+    match = re.search(email_regex, data.email)
     if not match:
         response.status_code = 400
         return HTTPException(
@@ -45,7 +47,7 @@ async def create_account(user: User,response:Response) -> dict:
             detail="Email is invalid"
         )
         
-    user_exists = await User.find_one(User.email == user.email)
+    user_exists = await User.find_one(User.email == data.email)
 
     if user_exists:
         response.status_code = 400
@@ -54,11 +56,25 @@ async def create_account(user: User,response:Response) -> dict:
             detail="Email already exists!"
         )
 
-    user.password = pwd_context.hash(user.password)
-    await user.create() 
-    message  = EmailManager.send_welcome_msg(user.email)
-    await fm.send_message(message)
-    return SuccessResponseModel(user, 201, "Account successfully created!" )
+    hash_password = pwd_context.hash(data.password)
+    
+    user = User(
+        name= data.username,
+        email =data.email,
+        password = hash_password
+    )
+    try:
+        send_smtp_email  = EmailManager.send_welcome_msg(data.email)
+        api_response = api_instance.send_transac_email(send_smtp_email)
+        print(api_response)
+        await user.create()
+        return SuccessResponseModel(user, 201, "Account successfully created!" )
+    
+    except:
+        return HTTPException(
+            status_code=400,
+            detail="User not created"
+        )
 
 @router.post("/auth/login", response_description="User login",status_code = 200)
 async def login_user(user: UserLogin, response:Response, Authorize: AuthJWT = Depends()):
@@ -100,22 +116,22 @@ async def resend_otp(data:EmailSchema):
 
 
 
-@router.get("/profile",status_code = 200)
-async def get_user_profile_data(response:Response, Authorize: AuthJWT = Depends()):
+# @router.get("/profile",status_code = 200)
+# async def get_user_profile_data(response:Response, Authorize: AuthJWT = Depends()):
     
-    Authorize.jwt_required()
-    current_user = Authorize.get_jwt_subject()
+#     Authorize.jwt_required()
+#     current_user = Authorize.get_jwt_subject()
     
-    user = await User.find_one(User.email == current_user)
-    if user:
-        return user
-    else:
-        response.status_code = 400
-        return{"message":"User not found"}
+#     user = await User.find_one(User.email == current_user)
+#     if user:
+#         return user
+#     else:
+#         response.status_code = 400
+#         return{"message":"User not found"}
 
 
 
-@router.post("/profile/image", status_code = 200, response_description="Upload profile image")
+@router.post("/profile/image/update", status_code = 200, response_description="Upload profile image")
 async def upload_profile_image(data:ImageSchema, response:Response, Authorize: AuthJWT = Depends()):
     
     Authorize.jwt_required()
@@ -161,7 +177,7 @@ async def upload_profile_image(data:ImageSchema, response:Response, Authorize: A
         return{"message":"User not found"}
     
 
-@router.post("/profile/data", status_code = 200, response_description="data updated")
+@router.post("/profile/update", status_code = 200, response_description="data updated")
 async def update_profile_data(data:ProfileDataSchema, response:Response, Authorize: AuthJWT = Depends()):
     
     Authorize.jwt_required()
@@ -169,10 +185,10 @@ async def update_profile_data(data:ProfileDataSchema, response:Response, Authori
     
     user = await User.find_one(User.email == current_user)
     if user:
-        if (data.first_name and data.first_name != ""):
-            user.first_name = data.first_name
-        if (data.last_name and data.last_name != ""):
-            user.last_name = data.last_name
+        if (data.username and data.username != ""):
+            user.username = data.username
+        if (data.full_name and data.full_name != ""):
+            user.full_name = data.full_name
         if (data.email and data.email != ""):
             email_regex = r'com$'
             match = re.search(email_regex, data.email)
@@ -183,14 +199,37 @@ async def update_profile_data(data:ProfileDataSchema, response:Response, Authori
                     detail="Email is invalid"
                 )
             user.email = data.email
+        if (data.store_name and data.store_name != ""):
+            user.store_name = data.store_name
         if (data.phone and data.phone != ""):
             user.phone = data.phone
         if (data.address and data.address != ""):
             user.address = data.address
-        if (data.bio and data.bio != ""):
-            user.bio = data.bio
         await user.save()
         return {"message":"Data successfully updated"}
+    else:
+        response.status_code = 400
+        return{"message":"User not found"}
+    
+    
+    
+
+@router.post("/profile/reset/password", status_code = 200, response_description="data updated")
+async def reset_user_password(data:PasswordSchema, response:Response, Authorize: AuthJWT = Depends()):
+    
+    Authorize.jwt_required()
+    current_user = Authorize.get_jwt_subject()
+    
+    user = await User.find_one(User.email == current_user)
+    if user:
+        if pwd_context.verify(data.current_password, user.password):
+            hash_password = pwd_context.hash(data.new_password)
+            user.password = hash_password
+            await user.save()
+            return {"message":"Password successfully updated"}
+        else:
+            response.status_code = 400
+            return {"message":"Current Password does not match"}
     else:
         response.status_code = 400
         return{"message":"User not found"}
