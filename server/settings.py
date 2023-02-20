@@ -33,7 +33,7 @@ class Settings(BaseModel):
     SOCIAL_AUTH_FACEBOOK_SECRET=config("SOCIAL_AUTH_FACEBOOK_SECRET")
     
     #S3 Bucket setting
-    USE_SPACES=False
+    USE_SPACES=True
     REGION_NAME=config("REGION_NAME")
     ENDPOINT_URL=config("ENDPOINT_URL")
     AWS_ACCESS_KEY_ID=config("AWS_ACCESS_KEY_ID")
